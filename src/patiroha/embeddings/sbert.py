@@ -1,3 +1,17 @@
+# Copyright 2026 しばやま (shibayamalicht)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """SBERT (Sentence-BERT) embedding for patent documents.
 
 Generates dense vector representations using Sentence-BERT models with
@@ -46,6 +60,10 @@ class SBERTEmbedder:
         Returns:
             numpy array of shape (n_texts, embedding_dim).
         """
+        if len(texts) == 0:
+            dim = int(self._model.get_sentence_embedding_dimension())
+            return np.empty((0, dim), dtype=np.float64)
+
         total_batches = (len(texts) + batch_size - 1) // batch_size
         embeddings_list: list[npt.NDArray[np.float64]] = []
 
@@ -60,7 +78,8 @@ class SBERTEmbedder:
         embeddings = np.vstack(embeddings_list)
         if normalize_embeddings:
             embeddings = normalize(embeddings, norm="l2")
-        return embeddings
+        # sentence-transformers returns float32; honor the declared float64 contract.
+        return embeddings.astype(np.float64, copy=False)
 
     def encode(
         self,

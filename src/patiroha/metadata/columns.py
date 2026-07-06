@@ -1,7 +1,22 @@
+# Copyright 2026 しばやま (shibayamalicht)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Automatic column mapping for patent data."""
 
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 
 import pandas as pd
@@ -48,17 +63,26 @@ def smart_map_columns(
 
 
 def _find_column(columns: Sequence[str], keywords: list[str]) -> str | None:
-    """Find a column matching the given keywords."""
-    # Exact match first
+    """Find a column matching the given keywords.
+
+    Matching is case-insensitive. ASCII keywords use boundary-aware substring
+    matching so that e.g. "date" does not match "candidate_id" and "applicant"
+    does not match "non_applicant_flag". Longer (more specific) keywords win.
+    """
+    # 1) Exact match (case-insensitive)
     for kw in keywords:
         for col in columns:
-            if kw == str(col):
+            if kw.lower() == str(col).lower():
                 return str(col)
 
-    # Substring match
-    for kw in keywords:
+    # 2) Boundary-aware substring match, most-specific (longest) keyword first
+    for kw in sorted(keywords, key=len, reverse=True):
         for col in columns:
-            if kw in str(col):
-                return str(col)
+            c = str(col)
+            if kw.isascii():
+                if re.search(rf"(?<![A-Za-z0-9]){re.escape(kw)}(?![A-Za-z0-9])", c, re.IGNORECASE):
+                    return c
+            elif kw in c:
+                return c
 
     return None

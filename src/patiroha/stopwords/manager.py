@@ -1,3 +1,17 @@
+# Copyright 2026 しばやま (shibayamalicht)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Stopword manager with category-based selection and full/half-width expansion."""
 
 from __future__ import annotations
@@ -10,7 +24,10 @@ from patiroha.stopwords.catalog import CATEGORIES, NPL_CATEGORIES, PATENT_CATEGO
 
 def _get_expanded_set(word_list: Iterable[str]) -> frozenset[str]:
     """Expand half-width ASCII to full-width equivalents and return a frozenset."""
-    expanded: set[str] = set(word_list)
+    # Materialize once: word_list may be a single-use iterator (generator), and
+    # this function iterates it twice.
+    words = list(word_list)
+    expanded: set[str] = set(words)
     hankaku = string.ascii_letters + string.digits
     zenkaku = (
         "ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ"
@@ -18,7 +35,7 @@ def _get_expanded_set(word_list: Iterable[str]) -> frozenset[str]:
         "０１２３４５６７８９"
     )
     trans = str.maketrans(hankaku, zenkaku)
-    for w in word_list:
+    for w in words:
         if any(c in hankaku for c in w):
             expanded.add(w.translate(trans))
     return frozenset(expanded)
@@ -32,7 +49,12 @@ def get_stopwords(mode: str = "patent") -> frozenset[str]:
 
     Returns:
         Frozenset of stopwords with half/full-width variants.
+
+    Raises:
+        ValueError: If mode is not "patent" or "npl".
     """
+    if mode not in ("patent", "npl"):
+        raise ValueError(f"Unknown mode: {mode!r}. Use 'patent' or 'npl'.")
     categories = NPL_CATEGORIES if mode == "npl" else PATENT_CATEGORIES
     words: list[str] = []
     for cat in categories:
@@ -67,7 +89,7 @@ def list_words(category: str) -> list[str]:
 
     Example:
         >>> list_words("chemistry")[:3]
-        ["含有", "含有量", "反応"]
+        ['コスト', 'シート', 'フィルム']
     """
     if category not in CATEGORIES:
         available = ", ".join(sorted(CATEGORIES.keys()))
@@ -116,7 +138,9 @@ class StopwordManager:
             base.extend(CATEGORIES[cat])
         base.extend(self._added)
         expanded = set(_get_expanded_set(base))
-        expanded -= self._removed
+        # Subtract the *expanded* removal set so full-width variants of removed
+        # ASCII words (e.g. "PCT" -> "ＰＣＴ") are dropped too.
+        expanded -= set(_get_expanded_set(self._removed))
         return frozenset(expanded)
 
     def list_active_words(self) -> dict[str, list[str]]:

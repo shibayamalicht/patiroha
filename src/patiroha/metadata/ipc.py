@@ -1,3 +1,17 @@
+# Copyright 2026 しばやま (shibayamalicht)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """IPC (International Patent Classification) code extraction and hierarchical parsing.
 
 IPC structure:  H   01   L   31/0725
@@ -46,8 +60,9 @@ def parse_ipc(code: str) -> IPCCode:
     """
     code = unicodedata.normalize("NFKC", code).lower().strip()
 
-    # Full IPC: e.g. "h01l31/0725"
-    m = re.match(r"([a-z])(\d{2})([a-z])\s*(\d{1,4})/(\d{2,})", code)
+    # Full IPC: e.g. "h01l31/0725" (end-anchored so trailing junk is rejected
+    # rather than silently retained, consistent with the partial branches below)
+    m = re.match(r"([a-z])(\d{2})([a-z])\s*(\d{1,4})/(\d+)\s*$", code)
     if m:
         sec, cls, sub, grp, sgrp = m.groups()
         return IPCCode(
@@ -116,11 +131,12 @@ def extract_ipc(text: str, delimiter: str = ";") -> list[str]:
         if not part:
             continue
 
-        # Full IPC code: e.g. "b32b 27/00"
-        match = re.search(r"([a-z]\d{2}[a-z])\s*(\d{1,4}/\d{2,})", part)
-        if match:
-            ipc_code = match.group(1) + match.group(2)
-            ipc_codes.append(ipc_code)
+        # Full IPC codes: e.g. "b32b 27/00" (collect ALL in the part, so
+        # delimiter-less concatenations like "b32b27/00c08l1/02" aren't truncated)
+        full_matches = re.findall(r"([a-z]\d{2}[a-z])\s*(\d{1,4}/\d+)", part)
+        if full_matches:
+            for subclass, group in full_matches:
+                ipc_codes.append(subclass + group)
         else:
             # Main class only: e.g. "b32b"
             match_main = re.search(r"\b([a-z]\d{2}[a-z])\b", part)

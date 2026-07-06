@@ -1,3 +1,17 @@
+# Copyright 2026 しばやま (shibayamalicht)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Clustering pipelines: UMAP + HDBSCAN and KMeans.
 
 Provides dimensionality reduction via UMAP followed by density-based (HDBSCAN) or
@@ -67,7 +81,8 @@ def build_landscape(
         random_state=random_state,
         metric=umap_metric,
     )
-    coords = reducer.fit_transform(vectors)
+    # UMAP returns float32; honor the declared float64 contract on coords.
+    coords = np.asarray(reducer.fit_transform(vectors), dtype=np.float64)
 
     if progress_callback:
         progress_callback(0.6)
@@ -82,10 +97,17 @@ def build_landscape(
         )
         labels = clusterer.fit_predict(coords)
     elif method == "kmeans":
-        km = KMeans(n_clusters=n_clusters, random_state=random_state, n_init=10)
+        # Clamp so n_clusters never exceeds the sample count (avoids a raw sklearn
+        # ValueError on small inputs; pipeline default n_clusters is 8).
+        k = max(1, min(n_clusters, len(coords)))
+        km = KMeans(n_clusters=k, random_state=random_state, n_init=10)
         labels = km.fit_predict(coords)
     else:
         raise ValueError(f"Unknown clustering method: {method!r}. Use 'hdbscan' or 'kmeans'.")
+
+    # Normalize label dtype so it matches the declared np.intp regardless of method
+    # (HDBSCAN -> int64, KMeans -> int32) and platform.
+    labels = np.asarray(labels, dtype=np.intp)
 
     if progress_callback:
         progress_callback(1.0)

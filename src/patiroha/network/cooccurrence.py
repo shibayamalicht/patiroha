@@ -1,3 +1,17 @@
+# Copyright 2026 しばやま (shibayamalicht)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Keyword co-occurrence network construction with flexible metrics and analysis.
 
 Supports multiple similarity metrics (Jaccard, cosine, PMI, log-likelihood),
@@ -35,29 +49,48 @@ def build_cooccurrence_graph(
             - "frequency": raw co-occurrence count (no normalization)
 
     Returns:
-        networkx.Graph with 'size' node attribute and 'weight' edge attribute.
+        networkx.Graph with 'size' node attribute (document frequency) and
+        'weight' / 'cooccurrence' edge attributes.
+
+    Note:
+        All metrics are set-based over documents. Node selection, node 'size',
+        and the similarity denominators use document frequency (the number of
+        documents containing a keyword), and the 'cooccurrence' count is the
+        number of documents containing both endpoints. Intra-document repeats of
+        a keyword therefore do not affect results, so jaccard/dice/cosine are
+        strict set coefficients (e.g. jaccard is always <= 1).
+
+        Changed in 1.0.1: node 'size' and the similarity denominators previously
+        used raw token frequency (including intra-document repeats), which mixed
+        document- and token-level counts. Edge 'weight' values may differ from
+        1.0.0 for keyword lists that contain intra-document duplicates.
     """
     nx = require("networkx", "network")
 
-    all_keywords = [w for kws in keyword_lists for w in kws]
-    word_counts: Counter[str] = Counter(all_keywords)
-    top_nodes = [w for w, _ in word_counts.most_common(top_n)]
+    n_docs = len(keyword_lists)
+
+    # Document frequency: number of documents containing each keyword.
+    word_doc_counts: Counter[str] = Counter()
+    for kws in keyword_lists:
+        word_doc_counts.update(set(kws))
+
+    top_nodes = [w for w, _ in word_doc_counts.most_common(top_n)]
     top_set = set(top_nodes)
 
+    # Document co-occurrence: number of documents containing both keywords.
     pair_counts: Counter[tuple[str, str]] = Counter()
-    n_docs = len(keyword_lists)
     for kws in keyword_lists:
-        valid = sorted(set(w for w in kws if w in top_set))
+        valid = sorted(w for w in set(kws) if w in top_set)
         if len(valid) >= 2:
             for pair in combinations(valid, 2):
                 pair_counts[pair] += 1
 
     G = nx.Graph()
     for w in top_nodes:
-        G.add_node(w, size=word_counts[w])
+        G.add_node(w, size=word_doc_counts[w])
 
     for (u, v), c in pair_counts.items():
-        cu, cv = word_counts[u], word_counts[v]
+        cu, cv = word_doc_counts[u], word_doc_counts[v]
         weight = _compute_similarity(c, cu, cv, n_docs, similarity)
         if weight >= threshold:
             G.add_edge(u, v, weight=weight, cooccurrence=c)
@@ -118,8 +151,13 @@ def detect_communities(
         communities_list = nx.community.louvain_communities(G, seed=42)
     elif algorithm == "label_propagation":
         communities_list = nx.community.label_propagation_communities(G)
-    else:
+    elif algorithm == "greedy_modularity":
         communities_list = nx.community.greedy_modularity_communities(G)
+    else:
+        raise ValueError(
+            f"Unknown algorithm: {algorithm!r}. "
+            "Use 'greedy_modularity', 'louvain', or 'label_propagation'."
+        )
 
     community_map: dict[str, int] = {}
     for i, comm in enumerate(communities_list):
@@ -161,8 +199,13 @@ def get_hub_keywords(
             scores = nx.degree_centrality(G)
     elif centrality == "pagerank":
         scores = nx.pagerank(G)
-    else:
+    elif centrality == "degree":
         scores = nx.degree_centrality(G)
+    else:
+        raise ValueError(
+            f"Unknown centrality: {centrality!r}. "
+            "Use 'degree', 'betweenness', 'eigenvector', or 'pagerank'."
+        )
 
     sorted_hubs = sorted(scores.items(), key=lambda x: x[1], reverse=True)
     return sorted_hubs[:top_n]

@@ -1,3 +1,17 @@
+# Copyright 2026 しばやま (shibayamalicht)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Spatial cluster analysis -- centroid proximity descriptions."""
 
 from __future__ import annotations
@@ -27,10 +41,17 @@ def generate_spatial_summary(
         Japanese markdown text describing cluster proximity relationships.
     """
     try:
-        if df.empty or cluster_col not in df.columns or x_col not in df.columns:
+        if (
+            df.empty
+            or cluster_col not in df.columns
+            or x_col not in df.columns
+            or y_col not in df.columns
+        ):
             return "空間データなし"
 
         centroids = df.groupby(cluster_col)[[x_col, y_col]].mean()
+        # Exclude the noise cluster (-1) so it isn't reported as a neighbor.
+        centroids = centroids.drop(index=-1, errors="ignore")
         coords = centroids.values
         labels = centroids.index.tolist()
 

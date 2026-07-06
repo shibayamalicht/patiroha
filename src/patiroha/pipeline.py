@@ -1,3 +1,17 @@
+# Copyright 2026 しばやま (shibayamalicht)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """High-level patent analysis pipeline.
 
 Chains preprocessing → embedding → clustering → labeling in one call.
@@ -45,7 +59,7 @@ class PatentPipeline:
         pipe = PatentPipeline()
         pipe.load("data.csv")
         pipe.preprocess()
-        pipe.extract_keywords()
+        pipe.extract_kw()
         pipe.embed()
         pipe.cluster()
         result = pipe.result
@@ -189,16 +203,27 @@ class PatentPipeline:
         embedder = SBERTEmbedder(self._sbert_model)
 
         text_cols = self._text_columns
+        column_weights = self._column_weights
         if text_cols is None:
             candidates = ["title", "abstract", "claims"]
             text_cols = [self._col_map.get(c, c) for c in candidates if self._col_map.get(c)]
             if not text_cols:
                 text_cols = [c for c in ["title", "abstract"] if c in self._df.columns]
+            # Remap weight keys from logical field names to the resolved columns
+            # (e.g. {"title": 2} -> {"発明の名称": 2}) so weighting still applies.
+            if column_weights:
+                column_weights = {self._col_map.get(k, k): v for k, v in column_weights.items()}
+
+        if not text_cols:
+            raise ValueError(
+                "No text columns found to embed. Pass text_columns=[...] explicitly, "
+                "or ensure the data has recognizable title/abstract columns."
+            )
 
         self._vectors = embedder.encode(
             self._df,
             text_columns=text_cols,
-            column_weights=self._column_weights,
+            column_weights=column_weights,
             progress_callback=progress_callback,
         )
         return self
@@ -261,6 +286,8 @@ class PatentPipeline:
         Returns:
             AnalysisResult with all computed data.
         """
+        if path is None and df is None:
+            raise ValueError("run() requires either path= or df=.")
         if path:
             self.load(path)
         elif df is not None:

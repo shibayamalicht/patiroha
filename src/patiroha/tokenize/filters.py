@@ -1,3 +1,17 @@
+# Copyright 2026 しばやま (shibayamalicht)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """N-gram filters for removing patent boilerplate, reference symbols, and formulaic phrases."""
 
 from __future__ import annotations
@@ -21,7 +35,10 @@ _NGRAM_ROWS: list[tuple[str, str, str, int]] = [
         "regex",
         1,
     ),
-    ("参照符号付き要素", r"[A-Z]+[0-9]+", "regex", 1),
+    # Standalone alphanumeric reference symbols (A1, S100) are intentionally not
+    # stripped here: a broad ``[A-Z]+[0-9]+`` rule would also destroy chemical
+    # formulae (CO2, H2O) and model numbers. Such tokens are filtered downstream
+    # by DEFAULT_REJECT_PATTERNS in :mod:`patiroha.tokenize.japanese`.
     # Section headers
     ("見出し・章句", "一実施形態において", "literal", 1),
     ("見出し・章句", "他の実施形態において", "literal", 1),

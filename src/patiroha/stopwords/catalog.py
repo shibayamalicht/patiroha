@@ -1,3 +1,17 @@
+# Copyright 2026 しばやま (shibayamalicht)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Stopword dictionaries organized by category."""
 
 from __future__ import annotations
@@ -617,8 +631,6 @@ SW_MISC: list[str] = [
     "第２",
     "第３",
     "第１",
-    "第２",
-    "第３",
     "１",
     "２",
     "３",
@@ -658,16 +670,6 @@ SW_MISC: list[str] = [
     "式1",
     "式2",
     "式3",
-    "０",
-    "１",
-    "２",
-    "３",
-    "４",
-    "５",
-    "６",
-    "７",
-    "８",
-    "９",
     "%",
     "％",
     "wt%",
@@ -1148,7 +1150,6 @@ SW_NPL: list[str] = [
     "for example",
     "for instance",
     "such as",
-    "et al",
     "et al.",
     "ibid",
     "op cit",

@@ -139,8 +139,8 @@ sw = mgr.build()             # => frozenset (O(1) lookup)
 | `structure` | 上部、表面、装置、フレーム | 98 |
 | `it_control` | システム、データ、制御、通信 | 104 |
 | `chemistry` | 溶液、触媒、樹脂、ポリマー | 104 |
-| `misc` | mm、℃、株式会社、Inc | 140 |
-| `npl` | abstract、study、however、論文 | 423 |
+| `misc` | mm、℃、株式会社、Inc | 128 |
+| `npl` | abstract、study、however、論文 | 422 |
 
 **Browse stopwords / ストップワードの中身を確認する:**
 
@@ -150,14 +150,14 @@ import patiroha
 # List all categories and their word counts / 全カテゴリと語数を一覧
 patiroha.list_categories()
 # => {"general": 134, "patent_terms": 145, "structure": 98, "it_control": 104,
-#     "chemistry": 104, "misc": 140, "npl": 423}
+#     "chemistry": 104, "misc": 128, "npl": 422}
 
 # See all words in a category / 特定カテゴリの全語をリスト表示
-patiroha.list_words("chemistry")
-# => ["ポリマー", "モノマー", "化合物", "反応", "反応条件", "反応時間", "反応温度", ...]
+patiroha.list_words("chemistry")  # sorted / ソート済み
+# => ["コスト", "シート", "フィルム", "ポリマー", "モノマー", "不要", ...]
 
-patiroha.list_words("patent_terms")
-# => ["PCT", "一実施例", "一実施形態", "不可能", "事件番号", ...]
+patiroha.list_words("patent_terms")  # sorted / ソート済み
+# => ["PCT", "シーケンス", "ステップ", "フロー", "一実施例", "一実施形態", ...]
 
 # See what's active in a StopwordManager / マネージャーの現在設定を確認
 mgr = StopwordManager(include=["general", "chemistry"])
@@ -374,8 +374,7 @@ names = auto_label(df["abstract"], result.labels, method="c-tfidf", top_n=3)
 | Dense layout / 密集した配置にしたい | `min_dist=0.01` |
 | Spread layout / 広がった配置にしたい | `min_dist=0.5, n_neighbors=30` |
 
-<details>
-<summary>Full parameter list / 全パラメータ一覧</summary>
+**Full parameter list / 全パラメータ一覧**
 
 | Parameter / パラメータ | Default / デフォルト | Description / 説明 |
 |-----------|---------|-------------|
@@ -389,8 +388,6 @@ names = auto_label(df["abstract"], result.labels, method="c-tfidf", top_n=3)
 | `cluster_metric` | `"euclidean"` | HDBSCAN distance metric / HDBSCAN 距離メトリック |
 | `cluster_selection_method` | `"eom"` | `"eom"` or `"leaf"` |
 | `n_clusters` | `8` | KMeans cluster count / KMeans クラスタ数 |
-
-</details>
 
 ---
 
@@ -564,7 +561,7 @@ AI アシスタントが patiroha を使うユーザーを支援する際のガ�
 # Full pipeline → PatentPipeline(...).run(path) → AnalysisResult
 ```
 
-**Testing / テスト:** `pytest tests/` — 84 tests covering all modules. `ruff check` + `mypy --strict` clean. / 84テストで全モジュールをカバー。ruff・mypy strict クリーン。
+**Testing / テスト:** `pytest tests/` — 122 tests covering all modules. `ruff check` + `mypy --strict` clean. / 122テストで全モジュールをカバー。ruff・mypy strict クリーン。
 
 ---
 
@@ -574,4 +571,9 @@ AI アシスタントが patiroha を使うユーザーを支援する際のガ�
 
 ## 📄 License / ライセンス
 
-MIT License — Copyright (c) 2026 しばやま (shibayamalicht)
+Apache License 2.0 — Copyright (c) 2026 しばやま (shibayamalicht)
+
+See the [LICENSE](LICENSE) file for the full text. / 全文は [LICENSE](LICENSE) を参照。
+
+> Versions up to and including 1.0.0 were released under the MIT License.
+> 1.0.0 までのバージョンは MIT License で配布されていました。

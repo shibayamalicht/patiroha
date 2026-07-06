@@ -1,3 +1,17 @@
+# Copyright 2026 しばやま (shibayamalicht)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Compound Annual Growth Rate (CAGR) and trend analysis."""
 
 from __future__ import annotations
@@ -11,11 +25,14 @@ from patiroha._types import CAGRResult
 def calculate_cagr(df: pd.DataFrame, year_col: str = "year") -> CAGRResult:
     """Calculate CAGR and trend direction from year-based patent counts.
 
-    Trend classification (based on linear regression slope):
-    - slope > 0.5: Steep rise
-    - 0 < slope <= 0.5: Growth
-    - -0.5 <= slope <= 0: Decline
-    - slope < -0.5: Collapse
+    Trend classification (based on linear regression slope, with a small
+    dead-band around zero so flat data is reported as flat):
+    - slope > 0.5: Steep rise (急上昇)
+    - eps < slope <= 0.5: Growth (増加傾向)
+    - |slope| <= eps: Flat (横ばい)
+    - -0.5 < slope < -eps: Decline (減少傾向)
+    - slope <= -0.5: Collapse (失速)
+    Single-year input returns ("横ばい", growth_rate 0.0).
 
     Args:
         df: DataFrame containing a year column.
@@ -33,7 +50,7 @@ def calculate_cagr(df: pd.DataFrame, year_col: str = "year") -> CAGRResult:
 
     counts = years.value_counts().sort_index()
     if len(counts) < 2:
-        return CAGRResult(growth_rate=0.0, trend="Stable")
+        return CAGRResult(growth_rate=0.0, trend="横ばい")
 
     y_vals = counts.index.values.astype(float)
     c_vals = counts.values.astype(float)
@@ -42,10 +59,14 @@ def calculate_cagr(df: pd.DataFrame, year_col: str = "year") -> CAGRResult:
     try:
         coeffs = np.polyfit(y_vals, c_vals, 1)
         slope = float(coeffs[0])
+        # Dead-band around zero so flat data isn't flipped by floating-point noise.
+        eps = 1e-9
         if slope > 0.5:
             trend = "急上昇"
-        elif slope > 0:
+        elif slope > eps:
             trend = "増加傾向"
+        elif slope >= -eps:
+            trend = "横ばい"
         elif slope > -0.5:
             trend = "減少傾向"
         else:

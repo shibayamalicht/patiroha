@@ -1,3 +1,17 @@
+# Copyright 2026 しばやま (shibayamalicht)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Japanese compound noun extraction and TF-IDF tokenization.
 
 Provides Janome-based tokenization with configurable POS tags, n-gram filter
@@ -119,7 +133,9 @@ def extract_keywords(
     if _is_valid_compound(compound_word, sw, min_length, compiled_reject):
         words.append(compound_word)
 
-    # English fallback: extract 3+ letter words if no Japanese keywords found
+    # English fallback: extract 3+ letter words if no Japanese keywords found.
+    # Note: like the main path, this intentionally preserves duplicate
+    # occurrences (term frequency is a meaningful downstream signal).
     if not words and re.search(r"[a-zA-Z]", text):
         skips = {w.lower() for w in sw}
         candidates = re.findall(r"\b[a-zA-Z]{3,}\b", text)
